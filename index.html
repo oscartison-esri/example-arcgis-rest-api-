@@ -1,0 +1,129 @@
+<html>
+  <script>
+    async function getArcGISToken(portalUrl, username, password) {
+      const tokenUrl = `${portalUrl}/sharing/rest/generateToken`;
+
+      const params = new URLSearchParams({
+        username: username,
+        password: password,
+        referer: "https://www.arcgis.com", // Adjust if needed
+        f: "json",
+      });
+
+      try {
+        const response = await fetch(tokenUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params,
+        });
+
+        const result = await response.json();
+        if (result.token) {
+          console.log("Token retrieved successfully");
+          return result.token;
+        } else {
+          console.error("Failed to retrieve token:", result);
+          return null;
+        }
+      } catch (error) {
+        console.error("Error retrieving token:", error);
+        return null;
+      }
+    }
+
+    async function queryFeatureLayer(featureLayerUrl, whereClause, token) {
+      const queryUrl = `${featureLayerUrl}/query`;
+
+      const queryParams = new URLSearchParams({
+        where: whereClause, // SQL WHERE clause (e.g., "status='Active'")
+        outFields: "*", // Fetch all fields
+        returnGeometry: "false", // Change to "true" if you need geometry
+        f: "json", // Response format
+        token: token, // Include token if authentication is required
+      });
+
+      try {
+        const response = await fetch(`${queryUrl}?${queryParams}`, {
+          method: "GET",
+        });
+
+        const result = await response.json();
+
+        if (result.features && result.features.length > 0) {
+          return result.features;
+        } else {
+          console.log("No matching features found.");
+        }
+      } catch (error) {
+        console.error("Error querying feature layer:", error);
+      }
+    }
+
+    async function updateFeatureAttribute(
+      featureLayerUrl,
+      objectId,
+      fieldName,
+      newValue,
+      token
+    ) {
+      const updateUrl = `${featureLayerUrl}/applyEdits`;
+
+      const updatePayload = {
+        updates: JSON.stringify([
+          {
+            attributes: {
+              objectId: objectId,
+              [fieldName]: newValue,
+            },
+          },
+        ]),
+        f: "json",
+        token: token,
+      };
+
+      try {
+        console.log(updatePayload);
+        const response = await fetch(updateUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(updatePayload),
+        });
+
+        const result = await response.json();
+
+        if (
+          result.updateResults &&
+          result.updateResults.length > 0 &&
+          result.updateResults[0].success
+        ) {
+          console.log("Feature updated successfully", result.updateResults);
+        } else {
+          console.error("Failed to update feature", result);
+        }
+      } catch (error) {
+        console.error("Error updating feature:", error);
+      }
+    }
+
+    (async () => {
+      // get token from portal if enterprise 11.3 or under, if higher use an api-key
+      // https://developers.arcgis.com/documentation/security-and-authentication/api-key-authentication/tutorials/create-an-api-key/
+      const token = await getArcGISToken(portalUrl, username, password);
+      if (token) {
+        const features = await queryFeatureLayer(
+          "https://services.arcgis.com/1WXsSdZFzziTTcic/arcgis/rest/services/LabelTest/FeatureServer/0",
+          "field = 'A'",
+          ""
+        );
+
+        await updateFeatureAttribute(
+          "https://services.arcgis.com/1WXsSdZFzziTTcic/arcgis/rest/services/LabelTest/FeatureServer/0",
+          5,
+          "data",
+          new Date(),
+          ""
+        );
+      }
+    })();
+  </script>
+</html>
