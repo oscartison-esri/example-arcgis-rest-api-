@@ -113,7 +113,7 @@
         const features = await queryFeatureLayer(
           "https://services.arcgis.com/1WXsSdZFzziTTcic/arcgis/rest/services/LabelTest/FeatureServer/0",
           "field = 'A'",
-          ""
+          token
         );
 
         await updateFeatureAttribute(
@@ -121,7 +121,7 @@
           5,
           "data",
           new Date(),
-          ""
+          token
         );
       }
     })();
